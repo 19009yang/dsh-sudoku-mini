@@ -1,0 +1,21 @@
+import { readFileSync, existsSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
+import { runInNewContext } from 'node:vm';
+import assert from 'node:assert/strict';
+
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+for (const key of ['.', './client']) for (const file of Object.values(pkg.exports[key])) assert.ok(existsSync(new URL(`../${file}`, import.meta.url)), `缺少产物 ${file}`);
+assert.equal(pkg.exports['./package.json'], './package.json');
+assert.ok(existsSync(new URL(`../${pkg.dsh.bundle.patch}`, import.meta.url)));
+assert.equal(pkg.dsh.client.platform, 'web');
+const bytes = readFileSync(new URL('../lib/client.js', import.meta.url));
+const compressed = gzipSync(bytes).length;
+assert.ok(compressed <= 60 * 1024, `客户端 gzip 超出预算：${compressed}`);
+let registration: { id: string; factory: (require: (id: string) => unknown) => Record<string, unknown> } | undefined;
+runInNewContext(bytes.toString(), { window: { __ModuleLoader__: { load(value: typeof registration) { registration = value; } } } });
+assert.ok(registration); assert.equal(registration.id, pkg.name);
+const required: string[] = [];
+const exports = registration.factory(id => { required.push(id); assert.equal(id, 'react', `非预期的宿主外部请求 ${id}`); return {}; });
+assert.deepEqual(required, ['react']); assert.equal(typeof exports.apply, 'function'); assert.deepEqual(Array.from(exports.inject as string[]), ['slots', 'layout']);
+assert.ok(!bytes.toString().includes('countSolutions'), '离线求解器不应进入客户端');
+console.log(`产物校验通过：${bytes.length} bytes，gzip ${compressed} bytes；共享 React，工厂协议有效。`);
