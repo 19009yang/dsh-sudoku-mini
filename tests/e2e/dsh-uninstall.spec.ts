@@ -14,6 +14,6 @@ test('has no Sudoku launcher after CLI uninstall and host restart', async ({ pag
   expect(entries).not.toContain('dsh-sudoku-mini');
   await expect(page.locator('[data-dsh-sudoku-mini]')).toHaveCount(0);
   await expect(page.locator('[data-sudoku-mini]')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '打开数独', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '打开功能菜单', exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
 });

@@ -5,7 +5,7 @@ test('loads the packaged client in a real DSH shell and keeps the host interacti
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(process.env.DSH_TEST_URL!);
-  const launcher = page.getByRole('button', { name: '打开数独', exact: true });
+  const launcher = page.getByRole('button', { name: '打开功能菜单', exact: true });
   await expect(launcher).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('[data-dsh-sudoku-mini]')).toHaveCount(1);
   // Onboarding is asynchronous; a visible launcher does not imply it has finished.
@@ -19,7 +19,7 @@ test('loads the packaged client in a real DSH shell and keeps the host interacti
   await expect(configureLater).toBeVisible();
   await configureLater.click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await launcher.click(); await expect(page.getByRole('grid', { name: '数独棋盘' })).toBeVisible();
+  await launcher.click(); await page.getByRole('button', { name: '打开数独', exact: true }).click(); await expect(page.getByRole('grid', { name: '数独棋盘' })).toBeVisible();
   const first = page.locator('.cell:not(.given)').first(); await first.click(); await page.keyboard.press('7');
   await expect(first.locator(':scope > span').first()).toHaveText('7'); await page.keyboard.press('Control+z');
   await expect(first.locator(':scope > span').first()).toHaveText('');

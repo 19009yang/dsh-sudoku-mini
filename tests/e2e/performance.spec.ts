@@ -13,12 +13,12 @@ test('stays responsive and releases intervals after repeated opens and mounts', 
   const baseline = await page.evaluate(() => Reflect.get(window, 'activeIntervalCount') as number);
   const measurements = await page.evaluate(() => {
     const root = document.querySelector<HTMLElement>('[data-sudoku-mini]')!.shadowRoot!;
-    const launcher = root.querySelector<HTMLElement>('.launcher')!, close = root.querySelector<HTMLElement>('.close')!;
+    const launcher = root.querySelector<HTMLElement>('.launcher')!, sudoku = root.querySelector<HTMLElement>('[data-feature="sudoku"]')!, close = root.querySelector<HTMLElement>('.close')!;
     const openTimes: number[] = [], inputTimes: number[] = [];
     for (let i = 0; i < 50; i++) {
-      const now = performance.now(); launcher.click(); root.querySelector('.panel')!.getBoundingClientRect(); openTimes.push(performance.now() - now); close.click();
+      const now = performance.now(); launcher.click(); sudoku.click(); root.querySelector('.panel')!.getBoundingClientRect(); openTimes.push(performance.now() - now); close.click();
     }
-    launcher.click();
+    launcher.click(); sudoku.click();
     const cell = root.querySelector<HTMLElement>('.cell:not(.given)')!; cell.click();
     for (let i = 0; i < 100; i++) {
       const now = performance.now(); cell.dispatchEvent(new KeyboardEvent('keydown', { key: i % 2 ? '1' : '2', bubbles: true, composed: true, cancelable: true })); cell.getBoundingClientRect(); inputTimes.push(performance.now() - now);
