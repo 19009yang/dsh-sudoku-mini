@@ -5,24 +5,55 @@ async function openSudoku(page: Page): Promise<void> {
   await page.getByRole('button', { name: '打开功能菜单', exact: true }).click();
   await page.getByRole('button', { name: '打开数独', exact: true }).click();
 }
-test('fans three features clockwise and keeps placeholders reserved', async ({ page }) => {
+test('fans three features clockwise and keeps the reserved slot disabled', async ({ page }) => {
   const launcher = page.locator('.launcher');
   await page.getByRole('button', { name: '打开功能菜单', exact: true }).click();
   const sudoku = page.getByRole('button', { name: '打开数独', exact: true });
-  const extensionOne = page.getByRole('button', { name: '扩展功能一，敬请期待', exact: true });
+  const g2048 = page.getByRole('button', { name: '打开2048', exact: true });
   const extensionTwo = page.getByRole('button', { name: '扩展功能二，敬请期待', exact: true });
-  await expect(sudoku).toBeVisible(); await expect(extensionOne).toBeVisible(); await expect(extensionTwo).toBeVisible();
+  await expect(sudoku).toBeVisible(); await expect(g2048).toBeVisible(); await expect(extensionTwo).toBeVisible();
   await expect.poll(async () => {
-    const [main, first, second, third] = await Promise.all([launcher.boundingBox(), sudoku.boundingBox(), extensionOne.boundingBox(), extensionTwo.boundingBox()]);
+    const [main, first, second, third] = await Promise.all([launcher.boundingBox(), sudoku.boundingBox(), g2048.boundingBox(), extensionTwo.boundingBox()]);
     return Boolean(main && first && second && third && first.x < main.x - 50 && second.x < main.x - 34 && second.y < main.y - 34 && third.y < main.y - 50);
   }).toBe(true);
-  const [mainBox, sudokuBox, oneBox, twoBox] = await Promise.all([launcher.boundingBox(), sudoku.boundingBox(), extensionOne.boundingBox(), extensionTwo.boundingBox()]);
-  expect(mainBox).not.toBeNull(); expect(sudokuBox).not.toBeNull(); expect(oneBox).not.toBeNull(); expect(twoBox).not.toBeNull();
+  const [mainBox, sudokuBox, g2048Box, twoBox] = await Promise.all([launcher.boundingBox(), sudoku.boundingBox(), g2048.boundingBox(), extensionTwo.boundingBox()]);
+  expect(mainBox).not.toBeNull(); expect(sudokuBox).not.toBeNull(); expect(g2048Box).not.toBeNull(); expect(twoBox).not.toBeNull();
   expect(sudokuBox!.x).toBeLessThan(mainBox!.x); expect(Math.abs(sudokuBox!.y - mainBox!.y)).toBeLessThan(6);
-  expect(oneBox!.x).toBeLessThan(mainBox!.x); expect(oneBox!.y).toBeLessThan(mainBox!.y);
+  expect(g2048Box!.x).toBeLessThan(mainBox!.x); expect(g2048Box!.y).toBeLessThan(mainBox!.y);
   expect(Math.abs(twoBox!.x - mainBox!.x)).toBeLessThan(6); expect(twoBox!.y).toBeLessThan(mainBox!.y);
-  await expect(extensionOne).toHaveAttribute('aria-disabled', 'true'); await expect(extensionTwo).toHaveAttribute('aria-disabled', 'true');
+  await expect(g2048).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(extensionTwo).toHaveAttribute('aria-disabled', 'true');
+  await extensionTwo.click();
+  await expect(page.locator('.launcher-status')).toContainText('尚未开放');
+  await expect(sudoku).toBeVisible();
   await page.keyboard.press('Escape'); await expect(page.getByRole('button', { name: '打开功能菜单', exact: true })).toBeFocused(); await expect(sudoku).not.toBeVisible();
+});
+test('moves 2048 tiles with the joystick and keeps the sudoku panel closed', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('dsh-sudoku-mini:v1:g2048', JSON.stringify({ schema: 1, tiles: [{ id: 1, value: 2, row: 0, col: 2 }, { id: 2, value: 4, row: 0, col: 3 }], score: 0, seed: 1, nextId: 3, moves: 0, won: false, status: 'playing' }));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: '打开功能菜单', exact: true }).click();
+  await page.getByRole('button', { name: '打开2048', exact: true }).click();
+  await expect(page.getByRole('region', { name: '2048 游戏' })).toBeVisible();
+  await expect(page.getByRole('group', { name: '2048 棋盘' })).toBeVisible();
+  await expect(page.getByRole('region', { name: '数独游戏' })).not.toBeVisible();
+  await expect(page.locator('.g-tile')).toHaveCount(2);
+  const box = (await page.locator('.g-stick-base').boundingBox())!;
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.waitForTimeout(30);
+  await page.mouse.move(cx - 45, cy, { steps: 3 });
+  await page.mouse.up();
+  await expect(page.locator('.g-tile')).toHaveCount(3);
+  await expect.poll(async () => page.locator('.g-tile').evaluateAll(tiles => tiles.slice(0, 2).map(tile => (tile as HTMLElement).style.getPropertyValue('--g-col')))).toEqual(['0', '1']);
+  const afterDrag = await page.locator('.g-tile').evaluateAll(tiles => tiles.map(tile => (tile as HTMLElement).style.getPropertyValue('--g-col')));
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => page.locator('.g-tile').evaluateAll(tiles => tiles.map(tile => (tile as HTMLElement).style.getPropertyValue('--g-col')))).not.toEqual(afterDrag);
+  await page.getByRole('button', { name: '关闭 2048' }).click();
+  await expect(page.getByRole('region', { name: '2048 游戏' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: '打开功能菜单', exact: true })).toBeVisible();
 });
 test('fills, notes, undoes and restores after refresh without changing host input', async ({ page }) => {
   const input = page.getByRole('textbox', { name: '宿主输入框' }); await input.fill('123 abc');

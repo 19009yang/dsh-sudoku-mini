@@ -53,3 +53,23 @@ tgz 已在第二个独立 profile 实际安装成功，并在真实 DSH 中完�
 - 用户实际 DSH 版本和其他插件组合；目前兼容结论仅限固定基线。
 
 因此当前交付为可构建、可安装且已完成所列回归的首版实现；规划第 12 节中的全部发布验收条件尚未满足。后续验证应在有凭证的独立 DSH 中执行，游戏开启时运行一个 agent 任务，确认发送、停止与审批正常。
+
+## 追加：2048 与工具宿主（2026-09-17）
+
+功能菜单第二项由占位符改为可用的 2048 面板，第三项仍为占位。为支持多工具，`src/client/widget.ts` 拆分为「悬浮入口 + 面板宿主」，具体工具实现迁入 `src/client/tools/`，并新增 `ToolModule` 契约（`mount(container, ctx) → { destroy() }`）。同一时刻只挂载一个工具：切换或关闭时销毁上一个工具，因此数独计时器与监听都会随之回收。
+
+2048 的规则全部为纯函数：`src/game2048/engine.ts` 负责滑动/合并/生成/胜负，`src/game2048/joystick.ts` 把指针采样折算为方向。摇杆按需求采用**纯速度阈值**触发（默认 `fireSpeed` 0.35 px/ms、最小间隔 140 ms），不设位移复武装、不设慢拖兜底；`rearmSpeed` 保留为可选刹车，默认关闭以保持最灵敏手感。触摸拖动使用较低阈值。
+
+| 检查 | 实际结果 |
+| --- | --- |
+| `pnpm typecheck` | 总体、服务端、客户端三组严格类型检查通过 |
+| `pnpm test` | 6 个测试文件、37 项通过；新增 `tests/g2048.test.ts`（引擎）与 `tests/joystick.test.ts`（阈值/滞回/夹紧） |
+| `pnpm puzzles:validate` | 数独题库未改动，80 题仍全部通过 |
+| `pnpm build` / `pnpm check:artifacts` | 通过；`lib/client.js` 68,387 bytes，gzip 22,687 bytes |
+| Playwright 预览与真实 DSH | **本次未执行**，原因见下 |
+
+本次 2048 的浏览器级行为未获实测：本机 Playwright 的 headless shell 未安装，改用 `channel: 'chromium'` 后 Chromium 能启动但无法完成任何导航（连 `data:text/html` 也超时），属于当前环境的浏览器运行限制，与本次改动无关。`tests/e2e/widget.spec.ts` 已同步更新（第二个功能按钮改为 2048、占位断言移到第三项，并新增摇杆拖动与方向键的 2048 用例），但**尚未在浏览器中跑过**。jsdom 测试覆盖了工具互斥挂载、计时器回收，以及经 `performance.now` 桩定的摇杆拖动确实触发移动；这些不能替代真实浏览器验证。
+
+建议在可用浏览器的环境中补跑 `pnpm test:e2e`，并确认：摇杆在真实指针事件下的阈值手感、触摸设备（`pointerType === 'touch'`）的阈值、以及高刷新率下连续快拖的节奏是否符合预期。
+
+另注：共享的确定性随机源放在 `src/shared/random.ts`。该目录原本拟命名为 `src/lib/`，但根 `.gitignore` 的 `lib/` 规则会匹配任意层级的 `lib`，导致源码被静默忽略，因此改名。

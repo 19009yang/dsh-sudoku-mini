@@ -4,5 +4,5 @@
     "noEmit": false, "emitDeclarationOnly": true, "declaration": true,
     "rootDir": "src", "outDir": "lib/types", "types": ["react"]
   },
-  "include": ["src/client", "src/game", "src/data"]
+  "include": ["src/client", "src/game", "src/game2048", "src/shared", "src/data"]
 }

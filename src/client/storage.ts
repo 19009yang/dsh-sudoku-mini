@@ -1,9 +1,12 @@
 import { BANK_VERSION, TRANSFORM_VERSION, createGame, puzzles } from '../game/puzzles.ts';
 import { isComplete } from '../game/rules.ts';
+import { CELLS, SIZE, type Game2048, type Tile } from '../game2048/types.ts';
 import { difficulties, type CellChange, type GameState, type HistoryEntry, type Settings } from '../game/types.ts';
 
 export const GAME_KEY = 'dsh-sudoku-mini:v1:game';
 export const SETTINGS_KEY = 'dsh-sudoku-mini:v1:settings';
+export const G2048_KEY = 'dsh-sudoku-mini:v1:g2048';
+export const G2048_BEST_KEY = 'dsh-sudoku-mini:v1:g2048-best';
 export const defaultSettings: Settings = { difficulty: 'expert', answerCheck: false, autoClean: true, theme: 'system', position: null };
 export interface Snapshot {
   schema: 1; bankVersion: number; transformVersion: number; tabId: string; revision: number;
@@ -66,6 +69,55 @@ export function saveGame(game: GameState | null, settings: Settings, tabId: stri
       if (text.length > 65_536) return false;
       target.setItem(GAME_KEY, text);
     }
+    return true;
+  } catch { return false; }
+}
+
+/** Persists only the shared preferences (theme, window position, difficulty). */
+export function saveSettings(settings: Settings, storage?: Storage): boolean {
+  try { (storage ?? localStorage).setItem(SETTINGS_KEY, JSON.stringify(settings)); return true; } catch { return false; }
+}
+
+export function readG2048Best(storage?: Storage): number {
+  try { const value = Number((storage ?? localStorage).getItem(G2048_BEST_KEY)); return Number.isInteger(value) && value >= 0 ? value : 0; } catch { return 0; }
+}
+
+export function readG2048(storage?: Storage): { game: Game2048 | null; error: boolean } {
+  try {
+    const text = (storage ?? localStorage).getItem(G2048_KEY);
+    if (text === null) return { game: null, error: false };
+    if (text.length > 65_536) throw new Error('存档过大');
+    return { game: restoreG2048(JSON.parse(text)), error: false };
+  } catch { return { game: null, error: true }; }
+}
+
+export function restoreG2048(raw: unknown): Game2048 {
+  if (!record(raw) || raw.schema !== 1) throw new Error('存档版本不兼容');
+  if (!Array.isArray(raw.tiles) || raw.tiles.length > CELLS) throw new Error('方块格式无效');
+  const cells = new Set<number>(), ids = new Set<number>(), tiles: Tile[] = [];
+  for (const tile of raw.tiles) {
+    if (!record(tile) || !integer(tile.id, 1, 1_000_000) || !integer(tile.row, 0, SIZE - 1) || !integer(tile.col, 0, SIZE - 1)) throw new Error('方块格式无效');
+    if (!integer(tile.value, 2, 1 << 20) || (tile.value & tile.value - 1) !== 0) throw new Error('方块数值无效');
+    const cell = tile.row * SIZE + tile.col;
+    if (cells.has(cell) || ids.has(tile.id)) throw new Error('方块位置冲突');
+    cells.add(cell); ids.add(tile.id);
+    tiles.push({ id: tile.id, value: tile.value, row: tile.row, col: tile.col });
+  }
+  if (!integer(raw.score, 0, Number.MAX_SAFE_INTEGER) || !integer(raw.seed, 0, 0xffffffff)) throw new Error('分数或种子无效');
+  if (!integer(raw.nextId, 1, 1_000_000) || !integer(raw.moves, 0, Number.MAX_SAFE_INTEGER)) throw new Error('计分状态无效');
+  if (raw.status !== 'playing' && raw.status !== 'over') throw new Error('游戏状态无效');
+  if (typeof raw.won !== 'boolean') throw new Error('游戏状态无效');
+  // Values above are range-checked, so the assertion only restores their literal union.
+  const snapshot = { score: raw.score, seed: raw.seed, nextId: raw.nextId, moves: raw.moves, won: raw.won, status: raw.status as Game2048['status'] };
+  if (tiles.some(tile => tile.id >= snapshot.nextId)) throw new Error('方块标识无效');
+  return { tiles, ...snapshot };
+}
+
+export function saveG2048(game: Game2048 | null, best: number, storage?: Storage): boolean {
+  try {
+    const target = storage ?? localStorage;
+    target.setItem(G2048_BEST_KEY, String(Math.max(0, Math.floor(best))));
+    if (game) target.setItem(G2048_KEY, JSON.stringify({ schema: 1, ...game }));
     return true;
   } catch { return false; }
 }

@@ -1,19 +1,12 @@
 import bank from '../data/puzzles.json' with { type: 'json' };
+import { newSeed, random, shuffle } from '../shared/random.ts';
 import { parseGrid } from './rules.ts';
 import type { Difficulty, Digit, GameState, Puzzle } from './types.ts';
 
 export const puzzles: Puzzle[] = bank as Puzzle[];
 export const BANK_VERSION = 1;
 export const TRANSFORM_VERSION = 1;
-export function random(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => { state += 0x6d2b79f5; let t = state; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-}
-export function shuffle<T>(items: readonly T[], rng: () => number): T[] {
-  const output = [...items];
-  for (let i = output.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [output[i], output[j]] = [output[j], output[i]]; }
-  return output;
-}
+export { newSeed, random, shuffle };
 export function transform(grid: string, seed: number): Digit[] {
   const rng = random(seed);
   const numbers = [0, ...shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], rng)];
@@ -35,4 +28,3 @@ export function pickPuzzle(difficulty: Difficulty, recent: readonly string[] = [
   if (!pool.length) throw new Error(`题库缺少 ${difficulty}`);
   return pool[Math.floor(Math.random() * pool.length)];
 }
-export const newSeed = (): number => crypto.getRandomValues(new Uint32Array(1))[0];
