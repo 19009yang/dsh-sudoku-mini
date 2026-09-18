@@ -18,4 +18,5 @@ const required: string[] = [];
 const exports = registration.factory(id => { required.push(id); assert.equal(id, 'react', `非预期的宿主外部请求 ${id}`); return {}; });
 assert.deepEqual(required, ['react']); assert.equal(typeof exports.apply, 'function'); assert.deepEqual(Array.from(exports.inject as string[]), ['slots', 'layout']);
 assert.ok(!bytes.toString().includes('countSolutions'), '离线求解器不应进入客户端');
+assert.ok(bytes.toString().includes('g2048'), '2048 工具未进入客户端产物');
 console.log(`产物校验通过：${bytes.length} bytes，gzip ${compressed} bytes；共享 React，工厂协议有效。`);

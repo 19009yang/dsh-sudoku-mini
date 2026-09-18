@@ -19,6 +19,13 @@ test('loads the packaged client in a real DSH shell and keeps the host interacti
   await expect(configureLater).toBeVisible();
   await configureLater.click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await launcher.click();
+  const g2048 = page.getByRole('button', { name: '打开2048', exact: true });
+  await expect(g2048).toBeVisible();
+  await g2048.click();
+  await expect(page.getByRole('region', { name: '2048 游戏' })).toBeVisible();
+  await expect(page.getByRole('group', { name: '2048 棋盘' })).toBeVisible();
+  await page.getByRole('button', { name: '关闭 2048', exact: true }).click();
   await launcher.click(); await page.getByRole('button', { name: '打开数独', exact: true }).click(); await expect(page.getByRole('grid', { name: '数独棋盘' })).toBeVisible();
   const first = page.locator('.cell:not(.given)').first(); await first.click(); await page.keyboard.press('7');
   await expect(first.locator(':scope > span').first()).toHaveText('7'); await page.keyboard.press('Control+z');

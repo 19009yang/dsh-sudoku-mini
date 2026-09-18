@@ -14,13 +14,13 @@ DeepSeek Harness Web 的悬浮小工具插件。点击圆形入口会顺时针�
 
 ```bash
 pnpm install
-pnpm pack --out artifacts/dsh-sudoku-mini-0.1.0.tgz
+pnpm pack --out artifacts/dsh-sudoku-mini-0.1.1.tgz
 ```
 
 继续在项目根目录执行以下命令，安装插件并启动 Web 页面。通过 `npx` 调用 CLI，无需预先安装 `dsh` 命令；这里使用的是 `@deepseek-ai/dsh`，不是系统 `apt` 中的同名工具。
 
 ```bash
-DSH_SUDOKU_PACKAGE="$(pwd)/artifacts/dsh-sudoku-mini-0.1.0.tgz"
+DSH_SUDOKU_PACKAGE="$(pwd)/artifacts/dsh-sudoku-mini-0.1.1.tgz"
 cd ~
 npx -y @deepseek-ai/dsh@0.1.5-rc.2 plugin --profile web add "$DSH_SUDOKU_PACKAGE"
 npx -y @deepseek-ai/dsh@0.1.5-rc.2 web --no-open
